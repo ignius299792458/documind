@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+wheels/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Poetry
+poetry.lock
+
+# MyPy
+.mypy_cache/
+*.pyi
+
+# Ruff / Black
+.ruff_cache/
+
+# Pytest
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# VSCode
+.vscode
+
+# JetBrains / PyCharm
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Uploads / temp files
+uploads/
+tmp/
+temp/
+
+# Vector store / DB files
+*.db
+*.sqlite
+*.sqlite3
+chroma/
+faiss_index/
