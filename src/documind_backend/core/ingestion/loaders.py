@@ -270,7 +270,7 @@ if __name__ == "__main__":
     # splits = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200).split_documents(sample_docs)
     import documind_backend.core.ingestion.splitters as splitters
 
-    chunks = splitters.split_documents(sample_docs, file_type)
+    chunks = splitters.split_documents(sample_docs, str(file_type))
     print(
         f"Split into {len(chunks)} chunks. \n First chunk metadata: {chunks[0].metadata} \n First chunk content: {chunks[0].page_content[:200]}..."
     )

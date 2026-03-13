@@ -102,14 +102,14 @@ HUMAN_PROMPT = "{question}"
 # removes ALL retrieved chunks (nothing relevant found).
 # Returned as-is, without calling llama3.2, saving inference time.
 NO_CONTEXT_RESPONSE = (
-    "I don't have enough information in the provided documents "
-    "to answer this question."
+    "I don't have enough information in the provided documents " "to answer this question."
 )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Context formatting
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _format_context(docs: list[Document]) -> str:
     """
@@ -140,10 +140,9 @@ def _format_context(docs: list[Document]) -> str:
     parts = []
     for i, doc in enumerate(docs, 1):
         filename = doc.metadata.get("filename", "unknown document")
-        page     = doc.metadata.get("page", "?")
+        page = doc.metadata.get("page", "?")
         parts.append(
-            f"--- Excerpt {i} ({filename}, page {page}) ---\n"
-            f"{doc.page_content.strip()}"
+            f"--- Excerpt {i} ({filename}, page {page}) ---\n" f"{doc.page_content.strip()}"
         )
 
     # Join with double newline so llama3.2 sees clear visual separation
@@ -153,6 +152,7 @@ def _format_context(docs: list[Document]) -> str:
 # ══════════════════════════════════════════════════════════════════════════════
 # LLM factory
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _get_llm(streaming: bool = False) -> ChatOllama:
     """
@@ -180,8 +180,8 @@ def _get_llm(streaming: bool = False) -> ChatOllama:
         Prevents runaway generation on complex questions.
     """
     return ChatOllama(
-        model=settings.ollama_chat_model,      # "llama3.2:latest"
-        base_url=settings.ollama_base_url,     # "http://localhost:11434"
+        model=settings.ollama_chat_model,  # "llama3.2:latest"
+        base_url=settings.ollama_base_url,  # "http://localhost:11434"
         temperature=0,
         num_ctx=4096,
         num_predict=1024,
@@ -192,6 +192,7 @@ def _get_llm(streaming: bool = False) -> ChatOllama:
 # ══════════════════════════════════════════════════════════════════════════════
 # Chain builder
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def build_rag_chain(
     doc_ids: list[str] | None = None,
@@ -242,11 +243,13 @@ def build_rag_chain(
           chain.invoke({"question": "..."})        → str
           await chain.astream({"question": "..."}) → AsyncIterator[str]
     """
-    llm      = _get_llm(streaming=streaming)
-    prompt   = ChatPromptTemplate.from_messages([
-        ("system", SYSTEM_PROMPT),
-        ("human",  HUMAN_PROMPT),
-    ])
+    llm = _get_llm(streaming=streaming)
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", SYSTEM_PROMPT),
+            ("human", HUMAN_PROMPT),
+        ]
+    )
     retriever = build_retriever(doc_ids=doc_ids, use_reranking=use_reranking)
 
     # RunnableParallel: executes both branches with the same input simultaneously.
@@ -254,10 +257,12 @@ def build_rag_chain(
     # "question" branch: RunnablePassthrough() returns the input unchanged
     # Both outputs are merged into {"context": "...", "question": "..."}
     # which is exactly what the prompt template expects.
-    setup = RunnableParallel({
-        "context":  retriever | RunnableLambda(_format_context),
-        "question": RunnablePassthrough(),
-    })
+    setup = RunnableParallel(
+        {
+            "context": retriever | RunnableLambda(_format_context),
+            "question": RunnablePassthrough(),
+        }
+    )
 
     # Full pipeline — the | operator creates a RunnableSequence
     # Each component's output becomes the next component's input
@@ -269,6 +274,7 @@ def build_rag_chain(
 # ══════════════════════════════════════════════════════════════════════════════
 # Non-streaming query — returns full QueryResponse
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 async def run_rag_query(
     question: str,
@@ -308,7 +314,7 @@ async def run_rag_query(
     logger.info(f"[rag_chain] RAG query: '{question[:80]}...'")
 
     # ── Step 1: Retrieve ─────────────────────────────────────────────────────
-    retriever     = build_retriever(doc_ids=doc_ids, use_reranking=True)
+    retriever = build_retriever(doc_ids=doc_ids, use_reranking=True)
     retrieved_docs = retriever.invoke(question)
 
     logger.info(f"[rag_chain] Retrieved {len(retrieved_docs)} chunks")
@@ -332,19 +338,23 @@ async def run_rag_query(
     # ── Step 4: Call llama3.2 ────────────────────────────────────────────────
     # We build a minimal chain here (no retriever — we already have context)
     # to avoid a second retrieval call.
-    llm    = _get_llm(streaming=False)
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", SYSTEM_PROMPT),
-        ("human",  HUMAN_PROMPT),
-    ])
+    llm = _get_llm(streaming=False)
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", SYSTEM_PROMPT),
+            ("human", HUMAN_PROMPT),
+        ]
+    )
 
     # Directly format the prompt and invoke — skip the retriever step
-    formatted = prompt.invoke({
-        "context":  context_str,
-        "question": question,
-    })
+    formatted = prompt.invoke(
+        {
+            "context": context_str,
+            "question": question,
+        }
+    )
     response = await llm.ainvoke(formatted)
-    answer   = response.content
+    answer = response.content
 
     logger.info(f"[rag_chain] Answer generated ({len(answer)} chars)")
 
@@ -375,6 +385,7 @@ async def run_rag_query(
 # ══════════════════════════════════════════════════════════════════════════════
 # Streaming query — yields tokens for SSE
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 async def stream_rag_query(
     question: str,
@@ -414,7 +425,7 @@ async def stream_rag_query(
     logger.info(f"[rag_chain] Streaming RAG query: '{question[:80]}...'")
 
     # ── Step 1: Retrieve + filter ────────────────────────────────────────────
-    retriever     = build_retriever(doc_ids=doc_ids, use_reranking=True)
+    retriever = build_retriever(doc_ids=doc_ids, use_reranking=True)
     retrieved_docs = retriever.invoke(question)
     filtered_docs, has_context = filter_by_confidence(retrieved_docs)
 
@@ -422,18 +433,22 @@ async def stream_rag_query(
     if not has_context:
         logger.info("[rag_chain] No confident context — streaming fallback response")
         yield NO_CONTEXT_RESPONSE
-        return   # stops the generator — no llama3.2 call
+        return  # stops the generator — no llama3.2 call
 
     # ── Step 3: Build prompt with pre-retrieved context ──────────────────────
     context_str = _format_context(filtered_docs)
-    prompt      = ChatPromptTemplate.from_messages([
-        ("system", SYSTEM_PROMPT),
-        ("human",  HUMAN_PROMPT),
-    ])
-    formatted = prompt.invoke({
-        "context":  context_str,
-        "question": question,
-    })
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", SYSTEM_PROMPT),
+            ("human", HUMAN_PROMPT),
+        ]
+    )
+    formatted = prompt.invoke(
+        {
+            "context": context_str,
+            "question": question,
+        }
+    )
 
     # ── Step 4: Stream tokens from llama3.2 ──────────────────────────────────
     # ChatOllama.astream() yields AIMessageChunk objects.
@@ -442,5 +457,5 @@ async def stream_rag_query(
     llm = _get_llm(streaming=True)
     async for chunk in llm.astream(formatted):
         token = chunk.content
-        if token:   # skip empty chunks (Ollama sometimes sends empty strings)
+        if token:  # skip empty chunks (Ollama sometimes sends empty strings)
             yield token

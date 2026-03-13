@@ -20,8 +20,8 @@ THREE-LAYER RETRIEVAL ARCHITECTURE:
                       it looks similar to every other clause.
 
   Fusion (RRF):       EnsembleRetriever combines Dense + Sparse results using
-                      ----🤩 RRF: Reciprocal Rank Fusion---. 
-                      A chunk that ranks #1 in Dense AND #3 in Sparse beats 
+                      ----🤩 RRF: Reciprocal Rank Fusion---.
+                      A chunk that ranks #1 in Dense AND #3 in Sparse beats
                       one that ranks #1 in only one.
                       Weights: [0.6 Dense, 0.4 Sparse] — tune to your corpus.
 
@@ -99,6 +99,7 @@ logger = logging.getLogger(__name__)
 # Public API — the only function most callers need
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def build_retriever(
     doc_ids: list[str] | None = None,
     use_reranking: bool = True,
@@ -165,6 +166,7 @@ def build_retriever(
 # Private layer builders
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _build_chroma_filter_query(doc_ids: list[str] | None) -> dict | None:
     """
     Build ChromaDB WHERE clause from a list of doc_ids.
@@ -177,7 +179,7 @@ def _build_chroma_filter_query(doc_ids: list[str] | None) -> dict | None:
     if not doc_ids:
         return None
     if len(doc_ids) == 1:
-        return {"doc_id": doc_ids[0]}          # equality is faster than $in
+        return {"doc_id": doc_ids[0]}  # equality is faster than $in
     return {"doc_id": {"$in": doc_ids}}
 
 
@@ -236,7 +238,7 @@ def _build_sparse_retriever(doc_ids: list[str] | None) -> BM25Retriever | None:
         BM25Retriever, or None if no documents are in the collection yet.
     """
     vectorstore = get_vectorstore()
-    collection  = vectorstore._collection
+    collection = vectorstore._collection
 
     # Fetch all chunk texts + metadata (skip vectors — not needed for BM25)
     where_filter = _build_chroma_filter_query(doc_ids)
@@ -244,18 +246,15 @@ def _build_sparse_retriever(doc_ids: list[str] | None) -> BM25Retriever | None:
     if where_filter:
         fetch_kwargs["where"] = where_filter
 
-    results   = collection.get(**fetch_kwargs)
-    texts     = results.get("documents") or []
+    results = collection.get(**fetch_kwargs)
+    texts = results.get("documents") or []
     metadatas = results.get("metadatas") or []
 
     if not texts:
         return None  # empty collection — caller handles gracefully
 
     # Reconstruct LangChain Documents for BM25Retriever
-    docs = [
-        Document(page_content=text, metadata=meta)
-        for text, meta in zip(texts, metadatas)
-    ]
+    docs = [Document(page_content=text, metadata=meta) for text, meta in zip(texts, metadatas)]
 
     logger.debug(f"[retrievers] BM25 index built from {len(docs)} chunks")
 
@@ -293,7 +292,7 @@ def _build_ensemble_retriever(
     """
     return EnsembleRetriever(
         retrievers=[dense, sparse],
-        weights=[0.6, 0.4],   # must sum to 1.0
+        weights=[0.6, 0.4],  # must sum to 1.0
     )
 
 
@@ -334,8 +333,8 @@ def _wrap_with_flashrank(base_retriever: BaseRetriever) -> ContextualCompression
     from langchain_community.document_compressors.flashrank_rerank import FlashrankRerank
 
     compressor = FlashrankRerank(
-        top_n=settings.rerank_top_n,           # how many to keep (default 3)
-        model="ms-marco-MiniLM-L-12-v2",       # local cross-encoder model
+        top_n=settings.rerank_top_n,  # how many to keep (default 3)
+        model="ms-marco-MiniLM-L-12-v2",  # local cross-encoder model
     )
 
     return ContextualCompressionRetriever(
@@ -347,6 +346,7 @@ def _wrap_with_flashrank(base_retriever: BaseRetriever) -> ContextualCompression
 # ══════════════════════════════════════════════════════════════════════════════
 # Confidence filtering
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def filter_by_confidence(
     docs: list[Document],
@@ -422,6 +422,7 @@ def filter_by_confidence(
 # Utility
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def retrieve_raw(
     question: str,
     doc_ids: list[str] | None = None,
@@ -448,7 +449,6 @@ def retrieve_raw(
     docs = retriever.invoke(question)
 
     logger.info(
-        f"[retrievers] retrieve_raw → {len(docs)} chunks | "
-        f"question='{question[:60]}...'"
+        f"[retrievers] retrieve_raw → {len(docs)} chunks | " f"question='{question[:60]}...'"
     )
     return docs

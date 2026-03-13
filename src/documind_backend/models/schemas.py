@@ -72,6 +72,14 @@ class DocumentListResponse(BaseModel):
     total: int
 
 
+class DeleteResponse(BaseModel):
+    """Response body for DELETE /documents/{doc_id}."""
+
+    doc_id: str
+    chunks_deleted: int
+    message: str
+
+
 # ================================================================== #
 # Ingestion models
 # ================================================================== #
@@ -138,6 +146,14 @@ class QueryResponse(BaseModel):
     tokens_used: Optional[int] = None
 
 
+class URLIngestRequest(BaseModel):
+    """Request body for POST /ingest/url."""
+
+    url: str
+    # Optional display name — if not provided, the URL is used as filename
+    display_name: str | None = None
+
+
 # ================================================================== #
 # Agent models
 # ================================================================== #
@@ -167,6 +183,34 @@ class AgentQueryResponse(BaseModel):
     steps_taken: int  # how many retrieval steps the agent performed
     sources: list[SourceChunk]
     has_relevant_context: bool
+
+
+class BatchQueryRequest(BaseModel):
+    """Request body for POST /query/batch."""
+
+    questions: list[str]
+    doc_ids: list[str] | None = None
+
+    # Max questions per batch — prevent abuse
+    # Validated by pydantic at field level
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "questions": [
+                    "What are the payment terms?",
+                    "When does the contract expire?",
+                    "Who are the signatories?",
+                ],
+                "doc_ids": None,
+            }
+        }
+
+
+class BatchQueryResponse(BaseModel):
+    """Response body for POST /query/batch."""
+
+    results: list[QueryResponse]
+    total: int
 
 
 # ================================================================== #

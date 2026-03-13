@@ -87,7 +87,11 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from documind_backend.config import settings
 from documind_backend.core.retrieval.retrievers import build_retriever, filter_by_confidence
-from documind_backend.core.chains.rag_chain import _format_context, SYSTEM_PROMPT, NO_CONTEXT_RESPONSE
+from documind_backend.core.chains.rag_chain import (
+    _format_context,
+    SYSTEM_PROMPT,
+    NO_CONTEXT_RESPONSE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +102,7 @@ MAX_ITERATIONS = 4
 # ══════════════════════════════════════════════════════════════════════════════
 # Agent State
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class AgentState(TypedDict):
     """
@@ -157,6 +162,7 @@ class AgentState(TypedDict):
 # LLM factory
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _get_llm() -> ChatOllama:
     """
     Return ChatOllama for the agent's internal reasoning calls.
@@ -184,6 +190,7 @@ def _get_llm() -> ChatOllama:
 # Each node receives the FULL current state and returns a PARTIAL update.
 # LangGraph merges the partial update into the state before the next node.
 
+
 def classify_node(state: AgentState) -> dict:
     """
     Node 1 — Classify query complexity.
@@ -199,7 +206,7 @@ def classify_node(state: AgentState) -> dict:
 
     Returns partial state update with 'plan' populated.
     """
-    llm      = _get_llm()
+    llm = _get_llm()
     question = state["question"]
 
     logger.info(f"[agent] classify_node | question='{question[:60]}...'")
@@ -215,8 +222,8 @@ B) MULTIPLE searches — requires searching for different aspects separately,
 
 Respond with ONLY the word "simple" or "multi-step". Nothing else."""
 
-    response  = llm.invoke([HumanMessage(content=classification_prompt)])
-    raw       = response.content.strip().lower()
+    response = llm.invoke([HumanMessage(content=classification_prompt)])
+    raw = response.content.strip().lower()
     query_type = "multi-step" if "multi" in raw else "simple"
 
     logger.info(f"[agent] Query classified as: {query_type}")
@@ -225,14 +232,16 @@ Respond with ONLY the word "simple" or "multi-step". Nothing else."""
         # Simple query: plan is just the original question
         # Goes straight to retrieve_node → reason_node
         return {
-            "plan":     [question],
-            "messages": [AIMessage(content=f"Query type: simple. Proceeding with direct retrieval.")],
+            "plan": [question],
+            "messages": [
+                AIMessage(content=f"Query type: simple. Proceeding with direct retrieval.")
+            ],
         }
 
     # Multi-step: delegate decomposition to plan_node
     # Return empty plan — plan_node will fill it
     return {
-        "plan":     [],
+        "plan": [],
         "messages": [AIMessage(content=f"Query type: multi-step. Building retrieval plan.")],
     }
 
@@ -257,7 +266,7 @@ def plan_node(state: AgentState) -> dict:
       Each should be answerable with a single document search.
       We parse the numbered list into a Python list.
     """
-    llm      = _get_llm()
+    llm = _get_llm()
     question = state["question"]
 
     logger.info(f"[agent] plan_node | decomposing: '{question[:60]}...'")
@@ -295,7 +304,7 @@ Your numbered list:"""
     logger.info(f"[agent] Plan created: {plan}")
 
     return {
-        "plan":     plan,
+        "plan": plan,
         "messages": [AIMessage(content=f"Retrieval plan: {plan}")],
     }
 
@@ -322,8 +331,8 @@ def retrieve_node(state: AgentState) -> dict:
       Document objects can't be serialized — we convert to dicts:
       {"page_content": "...", "metadata": {"doc_id": "...", ...}}
     """
-    plan     = state.get("plan", [])
-    doc_ids  = state.get("doc_ids")
+    plan = state.get("plan", [])
+    doc_ids = state.get("doc_ids")
 
     if not plan:
         # Plan exhausted — this shouldn't happen due to routing,
@@ -333,8 +342,8 @@ def retrieve_node(state: AgentState) -> dict:
 
     # Pop the next sub-question
     current_question = plan[0]
-    remaining_plan   = plan[1:]
-    iteration        = state.get("iteration_count", 0) + 1
+    remaining_plan = plan[1:]
+    iteration = state.get("iteration_count", 0) + 1
 
     logger.info(
         f"[agent] retrieve_node | iteration {iteration}/{MAX_ITERATIONS} | "
@@ -343,19 +352,16 @@ def retrieve_node(state: AgentState) -> dict:
 
     # Retrieve — use faster no-reranking for speed in multi-step loops.
     # FlashRank re-ranking happens once in reason_node via the full context.
-    retriever     = build_retriever(doc_ids=doc_ids, use_reranking=True)
-    docs          = retriever.invoke(current_question)
-    filtered, _   = filter_by_confidence(docs)
+    retriever = build_retriever(doc_ids=doc_ids, use_reranking=True)
+    docs = retriever.invoke(current_question)
+    filtered, _ = filter_by_confidence(docs)
 
     # Serialize Documents to dicts for state storage
-    new_docs = [
-        {"page_content": doc.page_content, "metadata": doc.metadata}
-        for doc in filtered
-    ]
+    new_docs = [{"page_content": doc.page_content, "metadata": doc.metadata} for doc in filtered]
 
     # Merge with previously retrieved docs, removing duplicates
     existing_docs = state.get("retrieved_docs", [])
-    all_docs      = _deduplicate_docs(existing_docs + new_docs)
+    all_docs = _deduplicate_docs(existing_docs + new_docs)
 
     logger.info(
         f"[agent] retrieve_node | found {len(filtered)} chunks | "
@@ -363,9 +369,9 @@ def retrieve_node(state: AgentState) -> dict:
     )
 
     return {
-        "plan":            remaining_plan,          # one item shorter
-        "retrieved_docs":  all_docs,                # accumulated unique chunks
-        "has_context":     len(all_docs) > 0,
+        "plan": remaining_plan,  # one item shorter
+        "retrieved_docs": all_docs,  # accumulated unique chunks
+        "has_context": len(all_docs) > 0,
         "iteration_count": iteration,
     }
 
@@ -389,23 +395,22 @@ def reason_node(state: AgentState) -> dict:
       num_ctx=4096 handles up to ~3000 chars of context comfortably.
       Increase to 8192 if you hit truncation on complex queries.
     """
-    question      = state["question"]
+    question = state["question"]
     retrieved_docs = state.get("retrieved_docs", [])
-    has_context   = state.get("has_context", False)
+    has_context = state.get("has_context", False)
 
-    logger.info(
-        f"[agent] reason_node | synthesizing from {len(retrieved_docs)} chunks"
-    )
+    logger.info(f"[agent] reason_node | synthesizing from {len(retrieved_docs)} chunks")
 
     # No relevant context found across ALL retrieval steps
     if not has_context or not retrieved_docs:
         return {
             "final_answer": NO_CONTEXT_RESPONSE,
-            "messages":     [AIMessage(content=NO_CONTEXT_RESPONSE)],
+            "messages": [AIMessage(content=NO_CONTEXT_RESPONSE)],
         }
 
     # Reconstruct Document objects from serialized dicts for formatting
     from langchain_core.documents import Document
+
     docs = [
         Document(
             page_content=d["page_content"],
@@ -417,20 +422,20 @@ def reason_node(state: AgentState) -> dict:
     context = _format_context(docs)
 
     # Use the same system prompt as rag_chain.py for consistency
-    llm      = _get_llm()
+    llm = _get_llm()
     messages = [
         SystemMessage(content=SYSTEM_PROMPT.format(context=context)),
         HumanMessage(content=question),
     ]
 
     response = llm.invoke(messages)
-    answer   = response.content
+    answer = response.content
 
     logger.info(f"[agent] reason_node | answer generated ({len(answer)} chars)")
 
     return {
         "final_answer": answer,
-        "messages":     [response],
+        "messages": [response],
     }
 
 
@@ -458,6 +463,7 @@ def respond_node(state: AgentState) -> dict:
 # Conditional edge routing functions
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def route_after_classify(state: AgentState) -> Literal["plan", "retrieve"]:
     """
     After classify_node: decide whether to plan or retrieve directly.
@@ -466,8 +472,8 @@ def route_after_classify(state: AgentState) -> Literal["plan", "retrieve"]:
     If plan has items → classify_node said "simple" → go straight to retrieve
     """
     if not state.get("plan"):
-        return "plan"       # multi-step: need to decompose first
-    return "retrieve"       # simple: go straight to retrieval
+        return "plan"  # multi-step: need to decompose first
+    return "retrieve"  # simple: go straight to retrieval
 
 
 def route_after_retrieve(state: AgentState) -> Literal["retrieve", "reason"]:
@@ -482,7 +488,7 @@ def route_after_retrieve(state: AgentState) -> Literal["retrieve", "reason"]:
       - Plan is exhausted (all sub-questions have been retrieved)
       - Max iterations reached — prevent infinite loops
     """
-    plan       = state.get("plan", [])
+    plan = state.get("plan", [])
     iterations = state.get("iteration_count", 0)
 
     if plan and iterations < MAX_ITERATIONS:
@@ -495,8 +501,7 @@ def route_after_retrieve(state: AgentState) -> Literal["retrieve", "reason"]:
 
     if iterations >= MAX_ITERATIONS:
         logger.warning(
-            f"[agent] MAX_ITERATIONS ({MAX_ITERATIONS}) reached — "
-            "forcing move to reason_node"
+            f"[agent] MAX_ITERATIONS ({MAX_ITERATIONS}) reached — " "forcing move to reason_node"
         )
 
     return "reason"
@@ -505,6 +510,7 @@ def route_after_retrieve(state: AgentState) -> Literal["retrieve", "reason"]:
 # ══════════════════════════════════════════════════════════════════════════════
 # Graph assembly
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def build_agent_graph():
     """
@@ -536,10 +542,10 @@ def build_agent_graph():
 
     # ── Register nodes ───────────────────────────────────────────────────────
     graph.add_node("classify", classify_node)
-    graph.add_node("plan",     plan_node)
+    graph.add_node("plan", plan_node)
     graph.add_node("retrieve", retrieve_node)
-    graph.add_node("reason",   reason_node)
-    graph.add_node("respond",  respond_node)
+    graph.add_node("reason", reason_node)
+    graph.add_node("respond", respond_node)
 
     # ── Entry point ──────────────────────────────────────────────────────────
     graph.set_entry_point("classify")
@@ -551,7 +557,7 @@ def build_agent_graph():
         "classify",
         route_after_classify,
         {
-            "plan":     "plan",
+            "plan": "plan",
             "retrieve": "retrieve",
         },
     )
@@ -564,13 +570,13 @@ def build_agent_graph():
         "retrieve",
         route_after_retrieve,
         {
-            "retrieve": "retrieve",   # loop back for next sub-question
-            "reason":   "reason",     # all sub-questions retrieved
+            "retrieve": "retrieve",  # loop back for next sub-question
+            "reason": "reason",  # all sub-questions retrieved
         },
     )
 
     # reason → respond → END (always)
-    graph.add_edge("reason",  "respond")
+    graph.add_edge("reason", "respond")
     graph.add_edge("respond", END)
 
     # ── Compile ──────────────────────────────────────────────────────────────
@@ -586,6 +592,7 @@ def build_agent_graph():
 # ══════════════════════════════════════════════════════════════════════════════
 
 _agent_app = None
+
 
 def get_agent():
     """
@@ -604,6 +611,7 @@ def get_agent():
 # ══════════════════════════════════════════════════════════════════════════════
 # Public query function
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 async def run_agent_query(
     question: str,
@@ -637,13 +645,13 @@ async def run_agent_query(
 
     # Initial state — nodes will update this as they run
     initial_state: AgentState = {
-        "messages":        [HumanMessage(content=question)],
-        "question":        question,
-        "doc_ids":         doc_ids,
-        "plan":            [],          # filled by classify_node or plan_node
-        "retrieved_docs":  [],          # accumulated by retrieve_node
-        "has_context":     False,
-        "final_answer":    "",
+        "messages": [HumanMessage(content=question)],
+        "question": question,
+        "doc_ids": doc_ids,
+        "plan": [],  # filled by classify_node or plan_node
+        "retrieved_docs": [],  # accumulated by retrieve_node
+        "has_context": False,
+        "final_answer": "",
         "iteration_count": 0,
     }
 
@@ -651,9 +659,7 @@ async def run_agent_query(
     config = {"configurable": {"thread_id": thread_id}}
 
     logger.info(
-        f"[agent] run_agent_query | "
-        f"thread_id={thread_id} | "
-        f"question='{question[:60]}...'"
+        f"[agent] run_agent_query | " f"thread_id={thread_id} | " f"question='{question[:60]}...'"
     )
 
     app = get_agent()
@@ -662,10 +668,10 @@ async def run_agent_query(
     final_state = await app.ainvoke(initial_state, config=config)
 
     return {
-        "answer":          final_state.get("final_answer", NO_CONTEXT_RESPONSE),
-        "session_id":      thread_id,
-        "steps_taken":     final_state.get("iteration_count", 0),
-        "has_context":     final_state.get("has_context", False),
+        "answer": final_state.get("final_answer", NO_CONTEXT_RESPONSE),
+        "session_id": thread_id,
+        "steps_taken": final_state.get("iteration_count", 0),
+        "has_context": final_state.get("has_context", False),
         "retrieved_count": len(final_state.get("retrieved_docs", [])),
     }
 
@@ -673,6 +679,7 @@ async def run_agent_query(
 # ══════════════════════════════════════════════════════════════════════════════
 # Helpers
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _deduplicate_docs(docs: list[dict]) -> list[dict]:
     """
@@ -684,7 +691,7 @@ def _deduplicate_docs(docs: list[dict]) -> list[dict]:
     Called in retrieve_node to prevent the same chunk being injected
     into the prompt multiple times across different retrieval steps.
     """
-    seen   = set()
+    seen = set()
     unique = []
     for doc in docs:
         # Use first 200 chars as fingerprint — fast and accurate enough
