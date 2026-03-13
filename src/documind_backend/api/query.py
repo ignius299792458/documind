@@ -37,7 +37,6 @@ STREAMING (SSE):
 
 import json
 import logging
-import uuid
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse

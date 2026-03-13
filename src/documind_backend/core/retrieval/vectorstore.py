@@ -304,7 +304,7 @@ def list_documents() -> list[dict[str, Any]]:
     chunk_counts: dict[str, int] = {}
 
     for meta in metadatas:
-        doc_id = meta.get("doc_id")
+        doc_id = str(meta.get("doc_id"))
         if not doc_id:
             continue
 

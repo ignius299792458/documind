@@ -84,6 +84,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, System
 from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.runnables import RunnableConfig
 
 from documind_backend.config import settings
 from documind_backend.core.retrieval.retrievers import build_retriever, filter_by_confidence
@@ -223,7 +224,7 @@ B) MULTIPLE searches — requires searching for different aspects separately,
 Respond with ONLY the word "simple" or "multi-step". Nothing else."""
 
     response = llm.invoke([HumanMessage(content=classification_prompt)])
-    raw = response.content.strip().lower()
+    raw = str(response.content).strip().lower()
     query_type = "multi-step" if "multi" in raw else "simple"
 
     logger.info(f"[agent] Query classified as: {query_type}")
@@ -234,7 +235,7 @@ Respond with ONLY the word "simple" or "multi-step". Nothing else."""
         return {
             "plan": [question],
             "messages": [
-                AIMessage(content=f"Query type: simple. Proceeding with direct retrieval.")
+                AIMessage(content="Query type: simple. Proceeding with direct retrieval.")
             ],
         }
 
@@ -242,7 +243,7 @@ Respond with ONLY the word "simple" or "multi-step". Nothing else."""
     # Return empty plan — plan_node will fill it
     return {
         "plan": [],
-        "messages": [AIMessage(content=f"Query type: multi-step. Building retrieval plan.")],
+        "messages": [AIMessage(content="Query type: multi-step. Building retrieval plan.")],
     }
 
 
@@ -288,7 +289,7 @@ Your numbered list:"""
 
     # Parse "1. Sub-question text" → ["Sub-question text", ...]
     plan = []
-    for line in response.content.strip().split("\n"):
+    for line in str(response.content).strip().split("\n"):
         line = line.strip()
         if line and line[0].isdigit() and ". " in line:
             # Strip the "1. " prefix
@@ -656,7 +657,7 @@ async def run_agent_query(
     }
 
     # LangGraph config — thread_id scopes the checkpointer state
-    config = {"configurable": {"thread_id": thread_id}}
+    config = RunnableConfig(configurable={"thread_id": thread_id})
 
     logger.info(
         f"[agent] run_agent_query | " f"thread_id={thread_id} | " f"question='{question[:60]}...'"

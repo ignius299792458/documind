@@ -196,7 +196,7 @@ async def ingest_document(
         logger.info(f"[ingest] Loaded {len(pages)} page(s)")
 
         # Step 5: Split — pages → chunks (smaller pieces for embedding)
-        logger.info(f"[ingest] Splitting into chunks...")
+        logger.info("[ingest] Splitting into chunks...")
         chunks = IngestionSplitters.split_documents(pages, file_type=extension.lstrip("."))
         chunk_count = len(chunks)
         logger.info(f"[ingest] Created {chunk_count} chunk(s)")

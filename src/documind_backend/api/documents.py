@@ -15,7 +15,6 @@ no LLM calls happen here. Pure metadata and CRUD operations.
 
 import logging
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
 
 from documind_backend.config import settings
 from documind_backend.models.schemas import (
@@ -123,10 +122,10 @@ async def get_document(doc_id: str) -> DocumentMeta:
 
     return DocumentMeta(
         doc_id=doc_id,
-        filename=meta.get("filename", "unknown"),
-        file_type=meta.get("file_type", "unknown"),
+        filename=str(meta.get("filename", "unknown")),
+        file_type=str(meta.get("file_type", "unknown")),
         file_size_bytes=0,
-        page_count=meta.get("total_pages"),
+        page_count=int(str(meta.get("total_pages"))),
         status=DocumentStatus.READY,
         chunk_count=chunk_count,
     )

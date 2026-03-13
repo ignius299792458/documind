@@ -85,9 +85,11 @@ import logging
 
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
+
 from langchain_community.retrievers import BM25Retriever
-from langchain.retrievers import EnsembleRetriever
-from langchain.retrievers.contextual_compression import ContextualCompressionRetriever
+from langchain_classic.retrievers import EnsembleRetriever
+from langchain_classic.retrievers.contextual_compression import ContextualCompressionRetriever
+
 
 from documind_backend.config import settings
 from documind_backend.core.retrieval.vectorstore import get_vectorstore
@@ -330,11 +332,12 @@ def _wrap_with_flashrank(base_retriever: BaseRetriever) -> ContextualCompression
       FlashRank re-scores and keeps top-N (controlled by rerank_top_n)
       Only top-N chunks are passed downstream to the LLM prompt.
     """
+    from flashrank import Ranker
     from langchain_community.document_compressors.flashrank_rerank import FlashrankRerank
 
     compressor = FlashrankRerank(
-        top_n=settings.rerank_top_n,  # how many to keep (default 3)
-        model="ms-marco-MiniLM-L-12-v2",  # local cross-encoder model
+        client=Ranker(model_name="ms-marco-MiniLM-L-12-v2"),
+        top_n=settings.rerank_top_n,
     )
 
     return ContextualCompressionRetriever(

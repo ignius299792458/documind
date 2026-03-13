@@ -354,7 +354,7 @@ async def run_rag_query(
         }
     )
     response = await llm.ainvoke(formatted)
-    answer = response.content
+    answer = str(response.content)
 
     logger.info(f"[rag_chain] Answer generated ({len(answer)} chars)")
 
@@ -456,6 +456,6 @@ async def stream_rag_query(
     # StrOutputParser is not used here because we yield manually.
     llm = _get_llm(streaming=True)
     async for chunk in llm.astream(formatted):
-        token = chunk.content
+        token = str(chunk.content)
         if token:  # skip empty chunks (Ollama sometimes sends empty strings)
             yield token
