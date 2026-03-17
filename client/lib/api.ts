@@ -5,14 +5,13 @@ import type {
   QueryResponse,
   URLIngestRequest,
   HealthResponse,
+  ModelParamsRequest,
+  ModelParamsResponse,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-async function apiFetch<T>(
-  path: string,
-  options?: RequestInit
-): Promise<T> {
+async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
@@ -26,7 +25,7 @@ async function apiFetch<T>(
     throw new Error(body.detail || `API error: ${res.status}`);
   }
 
-  return res.json();
+  return res.json() as unknown as T;
 }
 
 export async function getDocuments(): Promise<DocumentListResponse> {
@@ -59,7 +58,7 @@ export async function uploadDocument(file: File): Promise<IngestResponse> {
 }
 
 export async function ingestURL(
-  request: URLIngestRequest
+  request: URLIngestRequest,
 ): Promise<IngestResponse> {
   return apiFetch<IngestResponse>("/ingest/url", {
     method: "POST",
@@ -68,7 +67,7 @@ export async function ingestURL(
 }
 
 export async function queryDocuments(
-  request: QueryRequest
+  request: QueryRequest,
 ): Promise<QueryResponse> {
   return apiFetch<QueryResponse>("/query", {
     method: "POST",
@@ -80,7 +79,7 @@ export async function streamQuery(
   request: QueryRequest,
   onToken: (token: string) => void,
   onDone: () => void,
-  onError: (error: string) => void
+  onError: (error: string) => void,
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/query/stream`, {
     method: "POST",
@@ -130,4 +129,13 @@ export async function streamQuery(
 
 export async function checkHealth(): Promise<HealthResponse> {
   return apiFetch<HealthResponse>("/health");
+}
+
+export async function configureModelParams(
+  params: ModelParamsRequest,
+): Promise<ModelParamsResponse> {
+  return apiFetch<ModelParamsResponse>("/admin/config/model-params", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
 }

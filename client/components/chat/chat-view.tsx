@@ -1,20 +1,45 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "./chat-message";
 import { ChatInput } from "./chat-input";
 import { DocumentPanel } from "./document-panel";
 import { streamQuery } from "@/lib/api";
 import type { ChatMessage as ChatMessageType } from "@/lib/types";
-import { Brain } from "lucide-react";
+import { BrainCogIcon } from "lucide-react";
+
+const STORAGE_KEY = "documind-chat-messages";
+
+function loadMessages(): ChatMessageType[] {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as ChatMessageType[];
+    return parsed.map((m) => ({
+      ...m,
+      timestamp: new Date(m.timestamp),
+      isStreaming: false,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function saveMessages(msgs: ChatMessageType[]) {
+  try {
+    const serialisable = msgs.filter((m) => !m.isStreaming || m.content);
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(serialisable));
+  } catch {
+    // storage full or unavailable — silently ignore
+  }
+}
 
 interface ChatViewProps {
   refreshTrigger?: number;
 }
 
 export function ChatView({ refreshTrigger }: ChatViewProps) {
-  const [messages, setMessages] = useState<ChatMessageType[]>([]);
+  const [messages, setMessages] = useState<ChatMessageType[]>(loadMessages);
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -28,6 +53,13 @@ export function ChatView({ refreshTrigger }: ChatViewProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  useEffect(() => {
+    const streaming = messages.some((m) => m.isStreaming);
+    if (!streaming) {
+      saveMessages(messages);
+    }
+  }, [messages]);
 
   const handleSend = async (question: string) => {
     const userMsg: ChatMessageType = {
@@ -58,17 +90,15 @@ export function ChatView({ refreshTrigger }: ChatViewProps) {
         (token) => {
           setMessages((prev) =>
             prev.map((m) =>
-              m.id === assistantId
-                ? { ...m, content: m.content + token }
-                : m
-            )
+              m.id === assistantId ? { ...m, content: m.content + token } : m,
+            ),
           );
         },
         () => {
           setMessages((prev) =>
             prev.map((m) =>
-              m.id === assistantId ? { ...m, isStreaming: false } : m
-            )
+              m.id === assistantId ? { ...m, isStreaming: false } : m,
+            ),
           );
           setIsStreaming(false);
         },
@@ -81,11 +111,11 @@ export function ChatView({ refreshTrigger }: ChatViewProps) {
                     content: `Error: ${error}`,
                     isStreaming: false,
                   }
-                : m
-            )
+                : m,
+            ),
           );
           setIsStreaming(false);
-        }
+        },
       );
     } catch {
       setMessages((prev) =>
@@ -93,11 +123,12 @@ export function ChatView({ refreshTrigger }: ChatViewProps) {
           m.id === assistantId
             ? {
                 ...m,
-                content: "Failed to connect to the server. Is the backend running?",
+                content:
+                  "Failed to connect to the server. Is the backend running?",
                 isStreaming: false,
               }
-            : m
-        )
+            : m,
+        ),
       );
       setIsStreaming(false);
     }
@@ -109,7 +140,7 @@ export function ChatView({ refreshTrigger }: ChatViewProps) {
         {messages.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4">
             <div className="flex size-16 items-center justify-center rounded-full bg-accent">
-              <Brain className="size-8 text-foreground" />
+              <BrainCogIcon className="size-8 text-foreground" />
             </div>
             <div className="text-center">
               <h2 className="text-2xl font-semibold text-foreground">
@@ -121,31 +152,15 @@ export function ChatView({ refreshTrigger }: ChatViewProps) {
                 across everything.
               </p>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              {[
-                "Summarize the key points",
-                "What are the main findings?",
-                "List all action items",
-                "Explain the methodology",
-              ].map((suggestion) => (
-                <button
-                  key={suggestion}
-                  onClick={() => handleSend(suggestion)}
-                  className="rounded-xl border border-border bg-secondary/30 px-4 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
           </div>
         ) : (
-          <ScrollArea className="flex-1" ref={scrollRef}>
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
             <div className="mx-auto max-w-3xl py-4">
               {messages.map((msg) => (
                 <ChatMessage key={msg.id} message={msg} />
               ))}
             </div>
-          </ScrollArea>
+          </div>
         )}
 
         <ChatInput onSend={handleSend} disabled={isStreaming} />

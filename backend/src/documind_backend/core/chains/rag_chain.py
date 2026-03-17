@@ -78,7 +78,8 @@ logger = logging.getLogger(__name__)
 #             when it admits what it doesn't know.
 #   Rule 3 — Reference excerpts: builds user trust + allows verification.
 #   Rule 4 — Be concise: llama3.2 tends to pad answers. This reins it in.
-SYSTEM_PROMPT = """You are DocuMind, a precise and honest document assistant.
+
+SYSTEM_PROMPT_OLD = """You are DocuMind, document assistant.
 
 Your ONLY job is to answer questions using the document excerpts provided below.
 
@@ -93,6 +94,11 @@ STRICT RULES — follow these exactly:
 4. Be concise and direct. Do not pad your answer with unnecessary phrases.
 5. If the question is completely unrelated to the documents, say so politely.
 
+CONTEXT EXCERPTS:
+{context}"""
+
+SYSTEM_PROMPT = """You are DocuMind, document assistant.
+Your ONLY job is to answer questions using the document excerpts provided below.
 CONTEXT EXCERPTS:
 {context}"""
 
