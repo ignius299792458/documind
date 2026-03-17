@@ -47,7 +47,7 @@ poetry install
 
 # 1. run directly
 python3 -m uvicorn documind_backend.main:app --reload
-# 2. using debugger -> follwing following alternative running method
+# 2. using debugger -> follow alternative running method below
 
 ```
 
