@@ -256,26 +256,23 @@ def get_supported_extensions() -> list[str]:
 
 
 if __name__ == "__main__":
-    # Get supported extensions
+    from pathlib import Path as _Path
+    import documind_backend.core.ingestion.splitters as splitters
+
     print("Supported extensions:", get_supported_extensions())
 
-    # Quick test: load a sample PDF and print the first Document's metadata
-    sample_path = (
-        "/Users/maheshbogati/Documents/langchain/documind/documind_backend/dependencies.md"
-    )
+    # Resolve sample path relative to backend/ directory
+    _backend_dir = _Path(__file__).resolve().parent.parent.parent.parent
+    sample_path = str(_backend_dir / "dependencies.md")
     sample_docs = load_document(sample_path, str(uuid4()), "dependencies.md")
     print(sample_docs[0].metadata)
     file_type = sample_docs[0].metadata.get("file_type")
-
-    # splits = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200).split_documents(sample_docs)
-    import documind_backend.core.ingestion.splitters as splitters
 
     chunks = splitters.split_documents(sample_docs, str(file_type))
     print(
         f"Split into {len(chunks)} chunks. \n First chunk metadata: {chunks[0].metadata} \n First chunk content: {chunks[0].page_content[:200]}..."
     )
 
-    # Quick test: fetch a web page and print the first Document's metadata
     import asyncio
 
     sample_url = "https://docs.langchain.com"

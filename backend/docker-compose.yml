@@ -177,6 +177,11 @@ services:
       CHROMA_HOST: chromadb
       CHROMA_PORT: 8000
 
+      # ── Paths inside the container ─────────────────────
+      # Override config.py default (backend/-relative) with
+      # the container mount point so the volume is honoured.
+      UPLOAD_DIR: /app/uploads
+
       # ── App config ───────────────────────────────────────
       APP_ENV: ${APP_ENV:-development} # "development" or "production"
       ALLOWED_ORIGINS: http://localhost:3000

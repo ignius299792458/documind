@@ -5,7 +5,18 @@
 # ============================================================
 
 from functools import lru_cache
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Anchor all relative paths to the backend/ directory so temp files,
+# uploads, and .env resolution work regardless of the CWD the server
+# is launched from (e.g. parent documind/ or backend/ itself).
+# config.py lives at backend/src/documind_backend/config.py
+#   → .parent    = backend/src/documind_backend/
+#   → .parent x2 = backend/src/
+#   → .parent x3 = backend/
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 class Settings(BaseSettings):
@@ -32,7 +43,7 @@ class Settings(BaseSettings):
     use_reranking: bool = True  # set False to skip re-ranking entirely
 
     # --- Chroma Storage Config ---
-    upload_dir: str = "./uploads"
+    upload_dir: str = str(BACKEND_DIR / "uploads")
     chroma_collection_name: str = "documents_docs"
     chroma_host: str = "127.0.0.1"
     chroma_port: int = 8001
@@ -48,9 +59,9 @@ class Settings(BaseSettings):
     chunk_size: int = 1000  # characters per chunk (sweet for context windows of 4k tokens)
     chunk_overlap: int = 200  # characters of overlap between chunks
 
-    # pydantic-settings config: read from .env file, ignore extra vars
+    # pydantic-settings config: .env resolved relative to backend/ dir
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(BACKEND_DIR / ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )

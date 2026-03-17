@@ -45,8 +45,8 @@ WORKDIR /app
 # Copy installed packages from builder stage
 COPY --from=builder /install /usr/local
 
-# Copy application source code
-COPY documind_backend/ ./documind_backend/
+# Copy application source code (lives under src/ in the repo)
+COPY src/documind_backend/ ./documind_backend/
 
 # Create uploads directory with correct ownership
 RUN mkdir -p /app/uploads && chown -R appuser:appuser /app
