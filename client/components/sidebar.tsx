@@ -8,6 +8,7 @@ import {
   Plus,
   Link as LinkIcon,
   Brain,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import { useState } from "react";
 const navItems = [
   { href: "/", label: "Chat", icon: MessageSquare },
   { href: "/docudeep", label: "DocuDeep", icon: FileSearch },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 interface SidebarProps {
@@ -53,7 +55,7 @@ export function Sidebar({ onDocumentsChange }: SidebarProps) {
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                     isActive
                       ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                   )}
                 >
                   <item.icon className="size-4" />

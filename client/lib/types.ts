@@ -67,3 +67,14 @@ export interface ChatMessage {
   isStreaming?: boolean;
   timestamp: Date;
 }
+
+export interface ModelParamsRequest {
+  ollama_creativity_temperature: number;
+  retrieval_top_k: number;
+  rerank_top_n: number;
+  confidence_threshold: number;
+}
+
+export interface ModelParamsResponse {
+  is_plugged: boolean;
+}
